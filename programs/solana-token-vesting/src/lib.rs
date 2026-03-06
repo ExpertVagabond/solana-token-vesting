@@ -26,6 +26,37 @@ pub enum VestingError {
 }
 
 // ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+#[event]
+pub struct VestingCreated {
+    pub authority: Pubkey,
+    pub beneficiary: Pubkey,
+    pub mint: Pubkey,
+    pub total_amount: u64,
+    pub start_ts: i64,
+    pub cliff_ts: i64,
+    pub end_ts: i64,
+}
+
+#[event]
+pub struct TokensClaimed {
+    pub beneficiary: Pubkey,
+    pub mint: Pubkey,
+    pub amount: u64,
+    pub total_released: u64,
+}
+
+#[event]
+pub struct VestingRevoked {
+    pub authority: Pubkey,
+    pub beneficiary: Pubkey,
+    pub mint: Pubkey,
+    pub unvested_returned: u64,
+}
+
+// ---------------------------------------------------------------------------
 // Program
 // ---------------------------------------------------------------------------
 
@@ -74,12 +105,16 @@ pub mod solana_token_vesting {
             total_amount,
         )?;
 
-        msg!(
-            "Vesting created: {} tokens for {}, cliff at {}",
+        emit!(VestingCreated {
+            authority: ctx.accounts.authority.key(),
+            beneficiary: ctx.accounts.beneficiary.key(),
+            mint: ctx.accounts.mint.key(),
             total_amount,
-            ctx.accounts.beneficiary.key(),
+            start_ts,
             cliff_ts,
-        );
+            end_ts,
+        });
+
         Ok(())
     }
 
@@ -132,7 +167,13 @@ pub mod solana_token_vesting {
             .checked_add(claimable)
             .ok_or(VestingError::Overflow)?;
 
-        msg!("Claimed {} tokens", claimable);
+        emit!(TokensClaimed {
+            beneficiary: ctx.accounts.beneficiary.key(),
+            mint: schedule.mint,
+            amount: claimable,
+            total_released: schedule.released_amount,
+        });
+
         Ok(())
     }
 
@@ -187,7 +228,13 @@ pub mod solana_token_vesting {
         schedule.revoked = true;
         schedule.total_amount = vested;
 
-        msg!("Revoked: {} unvested tokens returned to authority", unvested);
+        emit!(VestingRevoked {
+            authority: ctx.accounts.authority.key(),
+            beneficiary: schedule.beneficiary,
+            mint: schedule.mint,
+            unvested_returned: unvested,
+        });
+
         Ok(())
     }
 }
