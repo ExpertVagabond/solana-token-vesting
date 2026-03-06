@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token_interface::{Mint, TokenInterface, TokenAccount, TransferChecked, transfer_checked};
 
 declare_id!("7Nvr8JXv1WeAaH5UrMtEMwY7Wqsxhrw14Rkq73m1DmTj");
 
@@ -93,16 +93,18 @@ pub mod solana_token_vesting {
         schedule.bump = ctx.bumps.vesting_schedule;
 
         // Transfer tokens from authority's account into the PDA vault.
-        token::transfer(
+        transfer_checked(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                Transfer {
+                TransferChecked {
                     from: ctx.accounts.authority_token_account.to_account_info(),
                     to: ctx.accounts.vault.to_account_info(),
                     authority: ctx.accounts.authority.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
                 },
             ),
             total_amount,
+            ctx.accounts.mint.decimals,
         )?;
 
         emit!(VestingCreated {
@@ -147,17 +149,19 @@ pub mod solana_token_vesting {
         ];
         let signer_seeds = &[seeds];
 
-        token::transfer(
+        transfer_checked(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
-                Transfer {
+                TransferChecked {
                     from: ctx.accounts.vault.to_account_info(),
                     to: ctx.accounts.beneficiary_token_account.to_account_info(),
                     authority: ctx.accounts.vesting_schedule.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
                 },
                 signer_seeds,
             ),
             claimable,
+            ctx.accounts.mint.decimals,
         )?;
 
         // Update the released amount on the schedule.
@@ -209,17 +213,19 @@ pub mod solana_token_vesting {
         ];
         let signer_seeds = &[seeds];
 
-        token::transfer(
+        transfer_checked(
             CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
-                Transfer {
+                TransferChecked {
                     from: ctx.accounts.vault.to_account_info(),
                     to: ctx.accounts.authority_token_account.to_account_info(),
                     authority: ctx.accounts.vesting_schedule.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
                 },
                 signer_seeds,
             ),
             unvested,
+            ctx.accounts.mint.decimals,
         )?;
 
         // Mark revoked and cap total to vested portion so released bookkeeping
@@ -284,8 +290,8 @@ pub struct CreateVesting<'info> {
     /// CHECK: Arbitrary public key used only as a PDA seed and stored on-chain.
     pub beneficiary: AccountInfo<'info>,
 
-    /// The SPL token mint for the vesting tokens.
-    pub mint: Account<'info, Mint>,
+    /// The token mint for the vesting tokens.
+    pub mint: InterfaceAccount<'info, Mint>,
 
     /// The authority's token account that funds the vault.
     #[account(
@@ -293,7 +299,7 @@ pub struct CreateVesting<'info> {
         constraint = authority_token_account.mint == mint.key(),
         constraint = authority_token_account.owner == authority.key(),
     )]
-    pub authority_token_account: Account<'info, TokenAccount>,
+    pub authority_token_account: InterfaceAccount<'info, TokenAccount>,
 
     /// The vesting schedule PDA.
     #[account(
@@ -314,10 +320,10 @@ pub struct CreateVesting<'info> {
         seeds = [b"vault", vesting_schedule.key().as_ref()],
         bump,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccount>,
 
     pub system_program: Program<'info, System>,
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 #[derive(Accounts)]
@@ -334,6 +340,10 @@ pub struct Claim<'info> {
     )]
     pub vesting_schedule: Account<'info, VestingSchedule>,
 
+    /// The token mint matching the vesting schedule.
+    #[account(constraint = mint.key() == vesting_schedule.mint)]
+    pub mint: InterfaceAccount<'info, Mint>,
+
     /// PDA-owned vault holding the vesting tokens.
     #[account(
         mut,
@@ -342,7 +352,7 @@ pub struct Claim<'info> {
         token::mint = vesting_schedule.mint,
         token::authority = vesting_schedule,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccount>,
 
     /// The beneficiary's token account to receive claimed tokens.
     #[account(
@@ -350,9 +360,9 @@ pub struct Claim<'info> {
         constraint = beneficiary_token_account.mint == vesting_schedule.mint,
         constraint = beneficiary_token_account.owner == beneficiary.key(),
     )]
-    pub beneficiary_token_account: Account<'info, TokenAccount>,
+    pub beneficiary_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 #[derive(Accounts)]
@@ -369,6 +379,10 @@ pub struct Revoke<'info> {
     )]
     pub vesting_schedule: Account<'info, VestingSchedule>,
 
+    /// The token mint matching the vesting schedule.
+    #[account(constraint = mint.key() == vesting_schedule.mint)]
+    pub mint: InterfaceAccount<'info, Mint>,
+
     /// PDA-owned vault holding the vesting tokens.
     #[account(
         mut,
@@ -377,7 +391,7 @@ pub struct Revoke<'info> {
         token::mint = vesting_schedule.mint,
         token::authority = vesting_schedule,
     )]
-    pub vault: Account<'info, TokenAccount>,
+    pub vault: InterfaceAccount<'info, TokenAccount>,
 
     /// The authority's token account to receive returned unvested tokens.
     #[account(
@@ -385,9 +399,9 @@ pub struct Revoke<'info> {
         constraint = authority_token_account.mint == vesting_schedule.mint,
         constraint = authority_token_account.owner == authority.key(),
     )]
-    pub authority_token_account: Account<'info, TokenAccount>,
+    pub authority_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    pub token_program: Program<'info, Token>,
+    pub token_program: Interface<'info, TokenInterface>,
 }
 
 // ---------------------------------------------------------------------------
