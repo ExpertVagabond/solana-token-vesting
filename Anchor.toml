@@ -5,6 +5,9 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
+[programs.devnet]
+solana_token_vesting = "7Nvr8JXv1WeAaH5UrMtEMwY7Wqsxhrw14Rkq73m1DmTj"
+
 [programs.localnet]
 solana_token_vesting = "PDdBRCev5VXyU6PQyuupCCjRQCBcH8KvsVZhBMMVvGr"
 
@@ -12,7 +15,7 @@ solana_token_vesting = "PDdBRCev5VXyU6PQyuupCCjRQCBcH8KvsVZhBMMVvGr"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
