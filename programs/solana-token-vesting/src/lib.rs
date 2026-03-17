@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token_interface::{Mint, TokenInterface, TokenAccount, TransferChecked, transfer_checked};
+use anchor_spl::token_interface::{
+    transfer_checked, Mint, TokenAccount, TokenInterface, TransferChecked,
+};
 
 declare_id!("7Nvr8JXv1WeAaH5UrMtEMwY7Wqsxhrw14Rkq73m1DmTj");
 
@@ -412,23 +414,23 @@ pub struct Revoke<'info> {
 #[derive(InitSpace)]
 pub struct VestingSchedule {
     /// The authority who created and can revoke the schedule.
-    pub authority: Pubkey,       // 32
+    pub authority: Pubkey, // 32
     /// The beneficiary who receives vested tokens.
-    pub beneficiary: Pubkey,     // 32
+    pub beneficiary: Pubkey, // 32
     /// The SPL token mint.
-    pub mint: Pubkey,            // 32
+    pub mint: Pubkey, // 32
     /// Total number of tokens to vest (reduced on revoke).
-    pub total_amount: u64,       // 8
+    pub total_amount: u64, // 8
     /// Number of tokens already released to the beneficiary.
-    pub released_amount: u64,    // 8
+    pub released_amount: u64, // 8
     /// Unix timestamp when vesting begins.
-    pub start_ts: i64,           // 8
+    pub start_ts: i64, // 8
     /// Unix timestamp of the cliff.
-    pub cliff_ts: i64,           // 8
+    pub cliff_ts: i64, // 8
     /// Unix timestamp when vesting is fully complete.
-    pub end_ts: i64,             // 8
+    pub end_ts: i64, // 8
     /// Whether the schedule has been revoked.
-    pub revoked: bool,           // 1
+    pub revoked: bool, // 1
     /// PDA bump seed.
-    pub bump: u8,                // 1
+    pub bump: u8, // 1
 }
