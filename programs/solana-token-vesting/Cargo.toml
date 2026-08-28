@@ -1,5 +1,6 @@
 [package]
 name = "solana-token-vesting"
+authors = ["Matthew Karsten <matthewkarstenconnects@gmail.com>"]
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
